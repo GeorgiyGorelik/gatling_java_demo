@@ -12,20 +12,28 @@ public class ComputerDatabaseSimulation extends Simulation {
 
     public static DefaultConfig config = new DefaultConfig();
 
+    static FeederBuilder<String> productFeeder = csv("search.csv").random();
+
     HttpProtocolBuilder httpProtocol =
             http.baseUrl(config.baseUrl)
                     .acceptHeader("application/json")
                     .contentTypeHeader("application/json");
 
     ScenarioBuilder myFirstScenario = scenario("My First Scenario")
-            .exec(http("GET_/").get("/"))
-            .exec(http("GET_computers").get("/computers/"))
-            .exec(http("GET_computers_search").get("/computers?f=Macbook")
-                    .check(css("a:contains('MacBook Pro')", "href").saveAs("computerUrl")))
-            .exec(http("GET_#{computerUrl}").get("#{computerUrl}").check(status().is(200)))
-            .exec(http("GET_computers_search").get("/computers?f=eee")
-                    .check(css("a:contains('ASUS Eee PC 1005PE')", "href").saveAs("computerUrl2")))
-            .exec(http("GET_#{computerUrl2}").get("#{computerUrl2}").check(status().is(200)));
+            .during(config.testDuration).on(
+                    feed(productFeeder)
+                            .exitBlockOnFail(
+                                    exec(http("GET_/").get("/"))
+                                            .exec(http("GET_computers").get("/computers/"))
+                                            .exec(http("GET_computers_search").get("/computers?f=Macbook")
+                                                    .check(css("a:contains('MacBook Pro')", "href").saveAs("computerUrl"))
+                                            )
+                                            .exec(http("GET_#{computerUrl}").get("#{computerUrl}").check(status().is(200)))
+                                            .exec(http("GET_computers_search").get("/computers?f=eee")
+                                                    .check(css("a:contains('ASUS Eee PC 1005PE')", "href").saveAs("computerUrl2")))
+                                            .exec(http("GET_#{computerUrl2}").get("#{computerUrl2}").check(status().is(200)))
+                            )
+            );
 
     PopulationBuilder loadModel = new OpenLoadModel(myFirstScenario, config).buildLoadModel();
 
